@@ -4,11 +4,7 @@
 from tkinter import *
 
 import random
-#moves(all possibles)
 
-#estimator function
-
-#returns a tuple of move, score
 def bestMove(data):
     initialPosition=None
     finalPosition=None
