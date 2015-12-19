@@ -1,0 +1,846 @@
+#Sahil Abraham
+#Section M
+#Term Project
+from tkinter import *
+
+import random
+#moves(all possibles)
+
+#estimator function
+
+#returns a tuple of move, score
+def bestMove(data):
+    initialPosition=None
+    finalPosition=None
+    finalPiece=None
+    bestScore=-1
+    legalMoves=getPossibleMoves(data)
+    for move in range(len(legalMoves)):
+        (pieceX,pieceMove)=legalMoves[move]
+        data.previousRow=pieceX.row
+        data.previousCol=pieceX.col
+        (newRow,newCol)=pieceMove
+        pieceX.previousPiece = data.board[newRow][newCol]
+        pieceX.makeMove(newRow,newCol,pieceX.row,pieceX.col,data)
+        if estimator(data)>bestScore:
+            bestScore=estimator(data)
+            initialPosition=(pieceX.row,pieceX.col)
+            finalPosition=(newRow,newCol)
+            finalPiece=pieceX
+        pieceX.undoMove(newRow,newCol,data)
+    return (initialPosition,finalPosition,finalPiece)
+
+
+def estimator(data):
+    playerScore=0
+    OpponentScore=0
+    for row in range(len(data.board)):
+        for col in range(len(data.board[0])):
+            if data.board[row][col]!=None:
+                if data.board[row][col].color==data.player:
+                    if isinstance(data.board[row][col],King):
+                        playerScore+=data.kingScore
+                    if isinstance(data.board[row][col],Queen):
+                        playerScore+=data.queenScore
+                    if isinstance(data.board[row][col],Knight):
+                        playerScore+=data.knightScore
+                    if isinstance(data.board[row][col],Pawn):
+                        playerScore+=data.pawnScore
+                    if isinstance(data.board[row][col],Rook):
+                        playerScore+=data.rookScore
+                    if isinstance(data.board[row][col],Bishop):
+                        playerScore+=data.bishopScore
+                else:
+                    if isinstance(data.board[row][col],King):
+                        OpponentScore+=data.kingScore
+                    if isinstance(data.board[row][col],Queen):
+                        OpponentScore+=data.queenScore
+                    if isinstance(data.board[row][col],Knight):
+                        OpponentScore+=data.knightScore
+                    if isinstance(data.board[row][col],Pawn):
+                        OpponentScore+=data.pawnScore
+                    if isinstance(data.board[row][col],Rook):
+                        OpponentScore+=data.rookScore
+                    if isinstance(data.board[row][col],Bishop):
+                        OpponentScore+=data.bishopScore
+        return ((playerScore-OpponentScore)/data.totalScore)
+
+
+def checked(data):
+    pieceList=[]
+    piecePosition=[]
+    kingRow=None
+    kingCol=None
+    for row in range(len(data.board)):
+        for col in range(len(data.board[0])):
+            if isinstance(data.board[row][col],King) and \
+                data.board[row][col].color==data.player:
+                kingRow=row
+                kingCol=col 
+            if data.board[row][col]!=None:
+                if data.board[row][col].color!=data.player:
+                    pieceList.append(data.board[row][col])
+                    piecePosition.append((row,col))
+    for element in range(len(pieceList)):
+        piece=pieceList[element]
+        (piece.row,piece.col)=piecePosition[element]
+        if piece.isValid(kingCol,kingRow,data):
+            return True
+    return False
+
+def getPossibleMoves(data):
+    pieceList=[]
+    possibleMoves=[]
+    moveList=[]
+    for row in range(len(data.board)):
+        for col in range(len(data.board[0])):
+            if data.board[row][col]!=None and \
+            data.board[row][col].color== data.player:
+                    piece=data.board[row][col]          
+                    pieceList.append(data.board[row][col])
+                    piece.row, piece.col = row, col
+
+    for element in range(len(pieceList)):
+        piece=pieceList[element]
+        for row in range(len(data.board)):
+            for col in range(len(data.board[0])):
+                if piece.isValid(col,row,data):
+                    moveList.append((row,col))
+        possibleMoves.append((piece,moveList))
+        moveList=[]
+    allLegalMoves = []
+    for move in range(len(possibleMoves)):
+        (pieceX,pieceMoves)=possibleMoves[move]
+        data.previousRow=pieceX.row
+        data.previousCol=pieceX.col
+        for pieceMove in pieceMoves:
+            notChecked = False
+            (newRow,newCol)=pieceMove
+            pieceX.previousPiece = data.board[newRow][newCol]
+            pieceX.makeMove(newRow,newCol,pieceX.row,pieceX.col,data)
+            if checked(data):
+                notChecked = True
+            pieceX.undoMove(newRow,newCol,data)
+            if notChecked == False:
+                allLegalMoves.append((pieceX, pieceMove))
+    return allLegalMoves
+
+class Chess(object):
+    def __init__(self):
+        pass
+
+
+        
+class Piece(object):
+
+    def __init__(self, color):
+        self.color = color
+
+
+    def containsPoint(self, x, y, data):
+        return  self.x - data.squareWidth/2 < x < self.x + data.squareWidth/2 and \
+        self.y - data.squareHeight/2 < y < self.y + data.squareHeight/2
+
+    def move(self, row, col, data):
+        self.x = col*data.squareWidth+data.squareWidth/2
+        self.y = row*data.squareHeight+data.squareWidth/2
+
+    def freePath(self,drow,dcol,targetRow,targetCol,row,col,data):
+        row+=drow
+        col+=dcol
+        if row==targetRow and col==targetCol:
+            return True
+        if data.board[row][col]!=None:
+            return False
+        return self.freePath(drow,dcol,targetRow,targetCol,row,col,data)
+
+
+    
+    def makeMove(self,newRow,newCol,row,col,data):
+        piece=data.board[row][col]
+        data.board[newRow][newCol]=piece 
+        data.board[row][col]=None
+
+    def undoMove(self,row,col,data):
+        data.board[data.previousRow][data.previousCol] = self
+        data.board[row][col]= self.previousPiece
+
+
+class Pawn(Piece):
+
+    def __init__(self, color):
+        super().__init__(color)
+
+    def draw(self, x, y, canvas, data):
+        canvas.create_polygon((x,y-data.height/32),\
+            (x-data.width/32,y+data.height/24),
+            (x+data.width/32,y+data.height/24),fill=self.color,outline="black",\
+            width=3)
+        canvas.create_oval(x-data.width/48,y-data.height/24,x+data.width/48,\
+            y,fill=self.color,outline="black",width=3)
+
+    def isValid(self, targetCol, targetRow, data):
+        if data.board[targetRow][targetCol]!=None and \
+        data.board[targetRow][targetCol].color==self.color:
+            return False
+        if data.player=="deep pink" and self.row-targetRow>0:
+            return False
+        if data.player=="white" and self.row-targetRow<0:
+            return False
+        if abs(self.row-targetRow)==1 and abs(self.col-targetCol)==0:
+            if data.board[targetRow][targetCol]!=None and \
+            data.board[targetRow][targetCol].color!=self.color:
+                return False
+        if self.color=="deep pink" and self.row==1:
+            if (abs(self.row-targetRow)==2 and abs(self.col-targetCol)==0):
+                if (data.board[targetRow][targetCol]==None) and \
+                    self.freePath(1,0,targetRow,targetCol,self.row,self.col,data):
+                    return True
+                else:
+                    return False
+        if self.color=="white" and self.row==6:
+            if abs(self.row-targetRow)==2 and abs(self.col-targetCol)==0:
+                if (data.board[targetRow][targetCol]==None) and \
+                self.freePath(-1,0,targetRow,targetCol,self.row,self.col,data):
+                    return True
+                else:
+                    return False
+        if abs(self.col-targetCol)==0 and abs(self.row-targetRow)==1:
+            return True 
+        if abs(self.col-targetCol)>1:return False
+        if abs(self.col-targetCol)==1:
+            if abs(self.row-targetRow)!=1:return False
+            else:  
+                if data.board[targetRow][targetCol]!=None and \
+                data.board[targetRow][targetCol].color!=self.color:
+                    return True
+                else: return False
+
+
+class Queen(Piece):
+
+    def __init__(self, color):
+        super().__init__(color)
+
+    def draw(self,x,y,canvas,data):
+        canvas.create_polygon((x-data.width*(3/64),y+data.height/20),\
+            (x-data.width/20,y),\
+            (x-data.width*(3/80),y+data.height/40),\
+            (x-data.width/38.4,y-data.height/32),\
+            (x-data.width/80,y),\
+            (x,y-data.height/18),\
+            (x+data.width/80,y),\
+            (x+data.width/38.4,y-data.height/32),\
+            (x+data.width*(3/80),y+data.height/40),\
+            (x+data.width/20,y),\
+            (x+data.width*(3/64),y+data.height/20),\
+            fill=self.color,outline="black", width=3)
+
+    def isValid(self, targetCol, targetRow, data):
+        if data.board[targetRow][targetCol]!=None and \
+        data.board[targetRow][targetCol].color==self.color:
+            return False
+        if (abs(self.row-targetRow)!=abs(self.col-targetCol)) and \
+        (abs(self.row-targetRow)!=0 and abs(self.col-targetCol)!=0):
+            return False
+        if (self.row-targetRow)>0 and (self.col-targetCol)>0:
+            dcol=-1
+            drow=-1
+            if self.freePath(drow,dcol,targetRow,targetCol,self.row,self.col,\
+                data)==True:
+                if data.board[targetRow][targetCol]==None or \
+                data.board[targetRow][targetCol].color!=self.color:
+                    return True
+        if (self.row-targetRow)<0 and (self.col-targetCol)>0:
+            dcol=-1
+            drow=+1
+            if self.freePath(drow,dcol,targetRow,targetCol,self.row,self.col,\
+                data)==True:
+                if data.board[targetRow][targetCol]==None or \
+                data.board[targetRow][targetCol].color!=self.color:
+                    return True
+        if (self.row-targetRow)>0 and (self.col-targetCol)<0:
+            dcol=+1
+            drow=-1
+            if self.freePath(drow,dcol,targetRow,targetCol,self.row,self.col,\
+                data)==True:
+                if data.board[targetRow][targetCol]==None or \
+                data.board[targetRow][targetCol].color!=self.color:
+                    return True
+        if (self.row-targetRow)<0 and (self.col-targetCol)<0:
+            dcol=+1
+            drow=+1
+            if self.freePath(drow,dcol,targetRow,targetCol,self.row,self.col,\
+                data)==True:
+                if data.board[targetRow][targetCol]==None or \
+                data.board[targetRow][targetCol].color!=self.color:
+                    return True
+        if (self.row-targetRow)<0:
+            drow=+1
+            dcol=0
+            if self.freePath(drow,dcol,targetRow,targetCol,self.row,self.col,\
+                data)==True:
+                if data.board[targetRow][targetCol]==None or \
+                data.board[targetRow][targetCol].color!=self.color:
+                    return True
+        if (self.row-targetRow)>0:
+            drow=-1
+            dcol=0
+            if self.freePath(drow,dcol,targetRow,targetCol,self.row,self.col,\
+                data)==True:
+                if data.board[targetRow][targetCol]==None or \
+                data.board[targetRow][targetCol].color!=self.color:
+                    return True
+        if (self.col-targetCol)>0:
+            dcol=-1
+            drow=0
+            if self.freePath(drow,dcol,targetRow,targetCol,self.row,self.col,\
+                data)==True:
+                if data.board[targetRow][targetCol]==None or \
+                data.board[targetRow][targetCol].color!=self.color:
+                    return True
+        if (self.col-targetCol)<0:
+            dcol=+1
+            drow=0
+            if self.freePath(drow,dcol,targetRow,targetCol,self.row,self.col,\
+                data)==True:
+                if data.board[targetRow][targetCol]==None or \
+                data.board[targetRow][targetCol].color!=self.color:
+                    return True
+
+class Rook(Piece):
+
+    def __init__(self, color):
+        super().__init__(color)
+
+    def draw(self,x,y,canvas,data):
+        canvas.create_rectangle((x-data.width/32,y-data.height/48),\
+            (x+data.width/32,y+data.height/32),fill=self.color,\
+            outline="black",width=3)
+        canvas.create_rectangle(x-data.width/28,y+data.height/32,\
+            x+data.width/28,\
+            y+data.height/20,fill=self.color,outline="black",width=3)
+        canvas.create_polygon((x-2.5*data.width/56,\
+            y-5*data.height/96),\
+            (x-1.5*data.width/56,y-5*data.height/96),
+            (x-1.5*data.width/56,y-4*data.height/96),
+            (x-0.5*data.width/56,y-4*data.height/96),
+            (x-0.5*data.width/56,y-5*data.height/96),
+            (x+0.5*data.width/56,y-5*data.height/96),
+            (x+0.5*data.width/56,y-4*data.height/96),
+            (x+1.5*data.width/56,y-4*data.height/96),
+            (x+1.5*data.width/56,y-5*data.height/96),
+            (x+2.5*data.width/56,y-5*data.height/96),
+            (x+2.5*data.width/56,y-data.height/48),
+            (x-2.5*data.width/56,y-data.height/48),\
+            fill=self.color,outline="black",width=3)
+   
+    def isValid(self, targetCol, targetRow, data):
+        if abs(self.row-targetRow)!=0 and abs(self.col-targetCol)!=0:
+            return False
+        if data.board[targetRow][targetCol]!=None and \
+        data.board[targetRow][targetCol].color==self.color:
+            return False
+        if (self.row-targetRow)<0:
+            drow=+1
+            dcol=0
+            if self.freePath(drow,dcol,targetRow,targetCol,self.row,self.col,\
+                data)==True:
+                if data.board[targetRow][targetCol]==None or \
+                data.board[targetRow][targetCol].color!=self.color:
+                    return True
+        if (self.row-targetRow)>0:
+            drow=-1
+            dcol=0
+            if self.freePath(drow,dcol,targetRow,targetCol,self.row,self.col,\
+                data)==True:
+                if data.board[targetRow][targetCol]==None or \
+                data.board[targetRow][targetCol].color!=self.color:
+                    return True
+        if (self.col-targetCol)>0:
+            dcol=-1
+            drow=0
+            if self.freePath(drow,dcol,targetRow,targetCol,self.row,self.col,\
+                data)==True:
+                if data.board[targetRow][targetCol]==None or \
+                data.board[targetRow][targetCol].color!=self.color:
+                    return True
+        if (self.col-targetCol)<0:
+            dcol=+1
+            drow=0
+            if self.freePath(drow,dcol,targetRow,targetCol,self.row,self.col,\
+                data)==True:
+                if data.board[targetRow][targetCol]==None or \
+                data.board[targetRow][targetCol].color!=self.color:
+                    return True
+
+class Bishop(Piece):
+
+    def __init__(self, color):
+        super().__init__(color)
+
+    def draw(self,x,y,canvas,data):
+        canvas.create_polygon((x,y-data.height/32),\
+            (x-data.width/32,y+data.height/20),
+            (x+data.width/32,y+data.height/20),fill=self.color,\
+            outline="black",width=3)
+        canvas.create_oval(x-data.width/40,y-data.height/24,\
+            x+data.width/40,\
+            y,fill=self.color,outline="black",width=3)
+        canvas.create_oval(x-data.width/120,y-data.height/18,\
+            x+data.width/120,\
+            y-data.height/24,fill=self.color,outline="black",width=3)
+
+    def isValid(self, targetCol, targetRow, data):
+        if data.board[targetRow][targetCol]!=None and \
+        data.board[targetRow][targetCol].color==self.color:
+            return False
+        if abs(self.row-targetRow)!=abs(self.col-targetCol):
+            return False
+        if (self.row-targetRow)>0 and (self.col-targetCol)>0:
+            dcol=-1
+            drow=-1
+            if self.freePath(drow,dcol,targetRow,targetCol,self.row,self.col,\
+                data)==True:
+                if data.board[targetRow][targetCol]==None or \
+                data.board[targetRow][targetCol].color!=self.color:
+                    return True
+        if (self.row-targetRow)<0 and (self.col-targetCol)>0:
+            dcol=-1
+            drow=+1
+            if self.freePath(drow,dcol,targetRow,targetCol,self.row,self.col,\
+                data)==True:
+                if data.board[targetRow][targetCol]==None or \
+                data.board[targetRow][targetCol].color!=self.color:
+                    return True
+        if (self.row-targetRow)>0 and (self.col-targetCol)<0:
+            dcol=+1
+            drow=-1
+            if self.freePath(drow,dcol,targetRow,targetCol,self.row,self.col,\
+                data)==True:
+                if data.board[targetRow][targetCol]==None or \
+                data.board[targetRow][targetCol].color!=self.color:
+                    return True
+        if (self.row-targetRow)<0 and (self.col-targetCol)<0:
+            dcol=+1
+            drow=+1
+            if self.freePath(drow,dcol,targetRow,targetCol,self.row,self.col,\
+                data)==True:
+                if data.board[targetRow][targetCol]==None or \
+                data.board[targetRow][targetCol].color!=self.color:
+                    return True
+
+class King(Piece):
+
+    def __init__(self, color):
+        super().__init__(color)
+
+    def draw(self,x,y,canvas,data):
+        canvas.create_polygon((x-data.width/24,y+data.height/20),\
+            (x-data.width/24,y+data.height/96),\
+            (x-data.width/32,y+data.height/96),\
+            (x-data.width/32,y),\
+            (x+data.width/32,y),\
+            (x+data.width/32,y+data.height/96),\
+            (x+data.width/24,y+data.height/96),\
+            (x+data.width/24,y+data.height/20),
+            fill=self.color,outline="black",width=3)
+        canvas.create_polygon((x-data.width/96,y),\
+            (x-data.width/240,y-data.height/48),\
+            (x-data.width/48,y-data.height/96),\
+            (x-data.width/48,y-data.height/26),\
+            (x-data.width/240,y-data.height/32),\
+            (x-data.width/108,y-data.height/20),\
+            (x+data.width/108,y-data.height/20),\
+            (x+data.width/240,y-data.height/32),\
+            (x+data.width/48,y-data.height/26),\
+            (x+data.width/48,y-data.height/96),\
+            (x+data.width/240,y-data.height/48),\
+            (x+data.width/96,y),fill=self.color,outline="black",width=3)
+
+
+    def isValid(self, targetCol, targetRow, data):
+        if data.kingMoveWhite==1 or data.kingMovePink==1:
+            if (abs(self.row-targetRow)==0 and abs(self.col-targetCol)==2) or \
+            (abs(self.row-targetRow)==0 and abs(self.col-targetCol)==3):
+                if self.color=="white":
+                    return self.castleWhite(targetCol, targetRow, data)
+                if self.color=="deep pink":
+                    return self.castlePink(targetCol, targetRow, data)
+            else: return False
+        dirs = [ (-1, -1), (-1, 0), (-1, +1),
+             ( 0, -1),          ( 0, +1),
+             (+1, -1), (+1, 0), (+1, +1) ]
+        if ((self.row-targetRow),(self.col-targetCol)) not in dirs:
+            return False
+        else:
+            if data.board[targetRow][targetCol]!=None and \
+        data.board[targetRow][targetCol].color==self.color:
+                return False
+            else:return True
+
+    def castleWhite(self,targetCol, targetRow, data):
+        print("fuck ye")
+        if (targetCol,targetRow)!=(6,7) and (targetCol,targetRow)!=(2,7):
+            print("wow3")
+            return False
+        else:
+            if (targetCol,targetRow)==(6,7):
+                if data.board[targetRow][targetCol]!=None:
+                    print("wow")
+                    return False
+                if data.board[targetRow][targetCol]!=None: 
+                    print("wow2")
+                    return False
+                if isinstance(data.board[7][7], Rook):
+                    data.castle=data.board[7][7]
+                    data.board[7][7]=None
+                    data.board[7][5]=data.castle
+                    data.castle=None
+                    return True
+            else:
+                if data.board[7][1]!=None:return False
+                if data.board[7][2]!=None:return False
+                if data.board[7][3]!=None:return False
+                if isinstance(data.board[7][0], Rook):
+                    data.castle=data.board[7][0]
+                    data.board[7][0]=None
+                    data.board[7][3]=data.castle
+                    data.castle=None
+                    return True
+
+    def castlePink(self,targetCol, targetRow, data):
+        if (targetCol,targetRow)!=(6,0) and (targetCol,targetRow)!=(2,0):
+            return False
+        else:
+            if (targetCol,targetRow)==(6,0):
+                if data.board[0][5]!=None:return False
+                if data.board[0][6]!=None: return False
+                if isinstance(data.board[0][7], Rook):
+                    data.castle=data.board[0][7]
+                    data.board[0][7]=None
+                    data.board[0][5]=data.castle
+                    data.castle=None
+                    return True
+            else:
+                if data.board[0][3]!=None:return False
+                if data.board[0][2]!=None:return False
+                if data.board[0][1]!=None:return False
+                if isinstance(data.board[0][0], Rook):
+                    data.castle=data.board[0][0]
+                    data.board[0][0]=None
+                    data.board[0][3]=data.castle
+                    data.castle=None
+                    return True
+
+
+class Knight(Piece):
+
+    def __init__(self, color):
+        super().__init__(color)
+
+    def draw(self,x,y,canvas,data):
+        canvas.create_polygon((x-data.width*(5/96),y+data.height/20),\
+            (x-data.width*(5/128),y),\
+            (x-data.width/48,y-data.width/24),\
+            (x-data.width/256,y-data.width*(5/96)),\
+            (x,y-data.height/24),\
+            (x+data.height/96,y-data.height/24),\
+            (x+data.width*(5/128),y-data.height/32),\
+            (x+data.width*(5/128),y-data.height/144),\
+            (x+data.width/256,y-data.height/144),\
+            (x+data.width/256,y+data.height/144),\
+            (x+data.width*(5/128),y+data.height/32),\
+            (x+data.width*(5/128),y+data.height/20),\
+            fill=self.color, outline="black", width=3)
+        canvas.create_oval(x+data.width/256,y-data.height/28,\
+            x+data.height/96,y-data.height/34,fill="black")
+
+    def isValid(self, targetCol, targetRow, data):
+        if abs(self.row-targetRow)==2 and abs(self.col-targetCol)==1:
+            if data.board[targetRow][targetCol]!=None and \
+            data.board[targetRow][targetCol].color==self.color:
+                return False
+            else: return True
+        elif abs(self.row-targetRow)==1 and abs(self.col-targetCol)==2:
+            if data.board[targetRow][targetCol]!=None and \
+            data.board[targetRow][targetCol].color==self.color:
+                return False
+            else: return True
+        return False
+
+def init(data):
+    data.master=None
+    data.counter=0
+    data.oldPiece=None
+    data.checkMate=False
+    data.image=PhotoImage(file="python.gif")
+    data.gameMode= False
+    data.pieceClicked = False 
+    data.currentPiece = None 
+    data.squareWidth = data.width/8
+    data.squareHeight = data.height/8
+    data.board = [[None]*8 for row in range(8)]
+    for i in range(8):
+        data.board[1][i] = Pawn("deep pink")
+        data.board[6][i] = Pawn("white")
+    for i in (0,7):
+        data.board[0][i] = Rook("deep pink")
+        data.board[7][i] = Rook("white")
+    for i in (1,6):
+        data.board[0][i] = Knight("deep pink")
+        data.board[7][i] = Knight("white")
+    for i in (2,5):
+        data.board[0][i] = Bishop("deep pink")
+        data.board[7][i] = Bishop("white")
+    for i in (0,7):
+        data.board[0][i] = Rook("deep pink")
+        data.board[7][i] = Rook("white")
+    data.board[0][3] = Queen("deep pink")
+    data.board[7][3] = Queen("white")
+    data.board[0][4] = King("deep pink")
+    data.board[7][4] = King("white")
+    data.clickedPoint= None
+    data.player="white"
+    data.kingMoveWhite=0
+    data.kingMovePink=0
+    data.castle=None
+    data.previousRow=None
+    data.previousCol=None
+    data.pawnScore=1
+    data.knightScore=3
+    data.bishopScore=3
+    data.rookScore=5
+    data.queenScore=9
+    data.kingScore=10
+    data.totalScore=49
+    data.AI=False
+
+def drawSquare(canvas,data,row,col,number):
+    if number%2==0:
+        color="grey"
+    else: 
+        color = "midnight blue"
+    canvas.create_rectangle(data.width*(row/8),data.height*(col/8),\
+        data.width*(row+1/8),data.height*(col+1/8),fill=color,\
+        activefill="green")
+
+def keyPressed(event, data):
+    if event.keysym=="p":
+        print(getPossibleMoves(data))
+
+def getRow(y, data):
+    iteration=data.height/8
+    counter=0
+    while iteration <=data.height:
+        if y < iteration:
+            return counter
+        else:
+            iteration+=data.height/8
+            counter+=1
+
+def getCol(x, data):
+    iteration=data.height/8
+    counter=0
+    while iteration<=data.height:
+        if x < iteration:
+            return counter
+        else:
+            iteration+=data.height/8
+            counter+=1
+
+def mousePressed(event, data):
+    if data.gameMode==False:
+        if (event.x>=data.width*(1/3) and event.x<=data.width*(2/3)) and \
+        (event.y<=data.height*0.2 and event.y>=data.height*0.1):
+            data.gameMode=True
+        if (event.x>=data.width*(1/3) and event.x<=data.width*(2/3)) and \
+        (event.y<=data.height*0.31 and event.y>=data.height*0.21):
+            data.gameMode=True
+            data.AI=True
+    if data.pieceClicked==False:
+        col = getCol(event.x, data)
+        row = getRow(event.y, data)
+        data.previousRow= row
+        data.previousCol= col
+        if data.board[row][col]==None:
+            return
+        data.currentPiece= data.board[row][col]
+        if data.currentPiece.color!=data.player:
+            data.currentPiece=None
+            return
+        (data.currentPiece.row,data.currentPiece.col)=(row,col)
+        data.pieceClicked=True
+    else:
+        targetCol = getCol(event.x, data)
+        targetRow = getRow(event.y, data)
+        if isinstance(data.currentPiece, King):
+                if data.currentPiece.color=="deep pink":
+                    data.kingMovePink+=1
+                if data.currentPiece.color=="white":
+                    data.kingMoveWhite+=1
+        if data.currentPiece.isValid(targetCol,targetRow,data):
+            data.previousCol=data.currentPiece.col
+            data.previousRow=data.currentPiece.row
+            data.board[targetRow][targetCol]=data.currentPiece
+            data.board[data.currentPiece.row][data.currentPiece.col]=None
+            (data.currentPiece.row, data.currentPiece.col) = (targetRow, \
+                targetCol)
+            if checked(data):
+                data.currentPiece.undoMove(targetRow,targetCol,data)
+                data.pieceClicked=False
+                data.currentPiece=None
+                return
+            data.pieceClicked=False
+            data.currentPiece=None
+            if data.player=="white":
+                data.player="deep pink"
+            else:
+                data.player="white"
+        else:
+            data.pieceClicked=False
+            data.currentPiece=None
+        
+        
+
+def redrawAll(canvas, data):
+    if data.gameMode==False:
+        image=data.image
+        canvas.create_image(data.width/2, data.height/2,image=image)
+        canvas.create_text(data.width/2, data.height/20, \
+            text="The Greatest Game Ever Played",
+                    fill="black", font="Times 40 bold italic")
+        canvas.create_rectangle(data.width/3,data.height*0.1,data.width*2/3,\
+            data.height*0.2, fill="black")
+        canvas.create_rectangle(data.width/3,data.height*0.21,data.width*2/3,\
+            data.height*0.31, fill="black")
+        canvas.create_text(data.width/2, data.height*0.15, \
+            text="Play 2 Player",
+                    fill="white",activefill="red", font="Times 30 bold italic")
+        canvas.create_text(data.width/2, data.height*0.26, \
+            text="Play the AI",
+                    fill="white",activefill="red", font="Times 30 bold italic")
+    else:
+        for row in range (8):
+            for col in range (8):
+                drawSquare(canvas,data,row,col,row+col)
+        for row in range (8):
+            for col in range (8):
+                if data.board[row][col] != None:
+                    data.board[row][col].draw(data.squareWidth*col +\
+                    data.squareWidth/2,
+                    data.squareHeight*row + data.squareHeight/2, canvas, data)
+
+
+def isLegal(piece,move):
+    pass
+
+def vishwanathanAnand(data,n):
+    moves = [((1,3),(3,3),data.board[1][3]),
+    ((0,1),(2,2),data.board[0][1]),
+    ((0,2),(4,6),data.board[0][2]),
+    ((0,3),(0,1),data.board[0][3])
+    ]
+    if len(moves)<=n:return bestMove(data)
+    else:
+        (move,move2,piece)=moves[n]
+        (finalRow,finalCol)=move2
+        if piece.isValid(finalCol,finalRow,data): return moves[n]
+        else: return bestMove(data)
+
+def kasparov(data,n):
+    moves = [((1,2),(3,2),data.board[1][2]),
+    ((1,3),(2,3),data.board[1][3]),
+    ((0,6),(2,5),data.board[0][6]),
+    ((0,1),(2,2),data.board[0][1]),
+    ((1,4),(2,4),data.board[1][4])
+    ]
+    if len(moves)<=n:return bestMove(data)
+    else:
+        (move,move2,piece)=moves[n]
+        (finalRow,finalCol)=move2
+        if piece.isValid(finalCol,finalRow,data): return moves[n]
+        else: return bestMove(data)
+
+def bobbyFisher(data,n):
+    moves = [((1,4),(3,4),data.board[1][4]),
+    ((0,6),(2,5),data.board[0][6]),
+    ((0,1),(2,2),data.board[0][1]),
+    ((0,3),(0,1),data.board[0][3])
+    ]
+    if len(moves)<=n:return bestMove(data)
+    else:
+        (move,move2,piece)=moves[n]
+        (finalRow,finalCol)=move2
+        if piece.isValid(finalCol,finalRow,data): return moves[n]
+        else: return bestMove(data)
+
+def timerFired(data):   
+    if len(getPossibleMoves(data))==0:
+        data.checkMate=True
+    if data.checkMate==True:print("checkMate")  
+    if data.AI==True and data.player=="deep pink":
+        if data.counter==0:
+            myList=[bobbyFisher,kasparov,vishwanathanAnand]
+            data.master=random.choice(myList)
+            (move,move2,piece)=data.master(data,data.counter)
+            (row,col)=move
+            (finalRow,finalCol)=move2
+            piece.makeMove(finalRow,finalCol,row,col,data)
+            data.player="white"
+            data.counter+=1
+        else:
+            (move,move2,piece)=data.master(data,data.counter)
+            (row,col)=move
+            (finalRow,finalCol)=move2
+            piece.makeMove(finalRow,finalCol,row,col,data)
+            data.player="white"
+            data.counter+=1
+
+####################################
+# use the run function as-is
+####################################
+
+def run(width=1270, height=400):
+    def redrawAllWrapper(canvas, data):
+        canvas.delete(ALL)
+        redrawAll(canvas, data)
+        canvas.update()    
+
+    def mousePressedWrapper(event, canvas, data):
+        mousePressed(event, data)
+        redrawAllWrapper(canvas, data)
+
+    def keyPressedWrapper(event, canvas, data):
+        keyPressed(event, data)
+        redrawAllWrapper(canvas, data)
+
+    def timerFiredWrapper(canvas, data):
+        timerFired(data)
+        redrawAllWrapper(canvas, data)
+        # pause, then call timerFired again
+        canvas.after(data.timerDelay, timerFiredWrapper, canvas, data)
+    # Set up data and call init
+    class Struct(object): pass
+    data = Struct()
+    data.width = width
+    data.height = height
+    data.timerDelay = 100 # milliseconds
+    # create the root and the canvas
+    root = Tk()
+    canvas = Canvas(root, width=data.width, height=data.height)
+    canvas.pack()
+    init(data)
+    # set up events
+    root.bind("<Button-1>", lambda event:
+                            mousePressedWrapper(event, canvas, data))
+    root.bind("<Key>", lambda event:
+                            keyPressedWrapper(event, canvas, data))
+    timerFiredWrapper(canvas, data)
+    # and launch the app
+    root.mainloop()  # blocks until window is closed
+    print("bye!")
+
+run(700, 700)
+
+#opening image link http://www.chessgames.com/perl/chessgame?gid=1008399
